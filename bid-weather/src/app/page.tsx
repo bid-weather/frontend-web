@@ -1,6 +1,6 @@
-import RainfallChart from "../components/RainfallChart";
-import BidCalendar from "../components/Bidcalendar";
-import SectionTitle from "../components/SectionTitle";
+import RainfallChart from "@/components/RainfallChart";
+import BidCalendar from "@/components/Bidcalendar";
+import SectionTitle from "@/components/SectionTitle";
 
 export default function Home() {
   return (
