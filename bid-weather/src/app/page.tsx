@@ -1,20 +1,24 @@
+import SearchFilter from "@/components/SearchFilter";
 import RainfallChart from "@/components/RainfallChart";
 import BidCalendar from "@/components/Bidcalendar";
 import SectionTitle from "@/components/SectionTitle";
+import WeeklyWeather from "@/components/WeeklyWeather";
+import BidGraph from "@/components/BidGraph";
 
 export default function Home() {
   return (
     <>
-      <div className="bg-white rounded-2xl px-6 py-5 mb-6 shadow-sm">
-        <p className="text-gray-300 text-sm text-center">[ 검색 영역 ]</p>
+      <div className="mb-6">
+        <SearchFilter />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-20">
-        <div>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-20">
+        <div className="lg:col-span-3">
           <SectionTitle>지난 7일 날씨</SectionTitle>
+          <WeeklyWeather />
         </div>
 
-        <div>
+        <div className="lg:col-span-2">
           <SectionTitle>지난 7일 강수량</SectionTitle>
           <RainfallChart />
         </div>
@@ -23,6 +27,7 @@ export default function Home() {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <SectionTitle>입찰 공고 건 수 추이 및 예측 그래프</SectionTitle>
+          <BidGraph />
         </div>
 
         <div>
