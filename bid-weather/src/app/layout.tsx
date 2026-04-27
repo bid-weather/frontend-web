@@ -14,6 +14,9 @@ const pretendard = localFont({
 export const metadata: Metadata = {
   title: "BidWeather",
   description: "입찰 공고 날씨 분석 서비스",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({
