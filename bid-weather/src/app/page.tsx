@@ -1,11 +1,16 @@
+"use client";
+import { useState } from "react";
 import SearchFilter from "@/components/SearchFilter";
 import RainfallChart from "@/components/RainfallChart";
 import BidCalendar from "@/components/Bidcalendar";
 import SectionTitle from "@/components/SectionTitle";
 import WeeklyWeather from "@/components/WeeklyWeather";
 import BidGraph from "@/components/BidGraph";
+import WeatherToggle from "@/components/WeatherToggle";
 
 export default function Home() {
+  const [weatherType, setWeatherType] = useState("rain");
+
   return (
     <>
       <div className="mb-6">
@@ -19,8 +24,15 @@ export default function Home() {
         </div>
 
         <div className="lg:col-span-2">
-          <SectionTitle>지난 7일 강수량</SectionTitle>
-          <RainfallChart />
+          <SectionTitle
+            action={
+              <WeatherToggle value={weatherType} onChange={setWeatherType} />
+            }
+          >
+            지난 7일 기상 정보
+          </SectionTitle>
+
+          <RainfallChart type={weatherType} />
         </div>
       </div>
 
