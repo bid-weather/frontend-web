@@ -1,54 +1,91 @@
 "use client";
 
 import React from "react";
+import { useWeather } from "@/hooks/useApi";
 
-interface RainfallData {
-  date: number;
-  level: "many" | "normal" | "few" | "none";
-  mm: number;
+const BAR_MAX_HEIGHT = 100;
+
+interface Props {
+  type: string;
 }
 
-const seed = [72, 15, 3, 88, 42, 20, 55];
+export default function RainfallChart({ type }: Props) {
+  const { data: weatherData, isLoading } = useWeather();
 
-function generateData(): RainfallData[] {
-  const today = new Date();
+  const chartColor =
+    type === "rain"
+      ? "bg-blue-500"
+      : type === "humidity"
+        ? "bg-cyan-500"
+        : "bg-emerald-500";
 
-  const base = new Date(today);
-  base.setDate(today.getDate() - 1);
+  const data = React.useMemo(() => {
+    if (!weatherData) return [];
+    const today = new Date();
+    const keys = Object.keys(weatherData).sort((a, b) => {
+      const numA = parseInt(a.replace("ago", ""));
+      const numB = parseInt(b.replace("ago", ""));
+      return numB - numA;
+    });
+    return keys.map((key) => {
+      const daysAgo = parseInt(key.replace("ago", ""));
+      const date = new Date(today);
+      date.setDate(today.getDate() - daysAgo);
+      const day = weatherData[key];
+      return {
+        label: `${date.getMonth() + 1}/${date.getDate()}`,
+        rain: day?.precipitation ?? 0,
+        humidity: day?.humidity ?? 0,
+        wind: day?.dailyMaxWindSpeed ?? 0,
+      };
+    });
+  }, [weatherData]);
 
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(base);
-    d.setDate(base.getDate() - (6 - i));
-    const mm = seed[i];
-    const level =
-      mm >= 70 ? "many" : mm >= 40 ? "normal" : mm >= 15 ? "few" : "none";
-    return { date: d.getDate(), level, mm };
-  });
-}
+  if (isLoading) {
+    return (
+      <div
+        className="bg-white rounded-2xl p-5 flex items-center justify-center"
+        style={{ height: "140px" }}
+      >
+        <span className="text-gray-400 text-sm">불러오는 중...</span>
+      </div>
+    );
+  }
 
-const data: RainfallData[] = generateData();
-
-const BAR_MAX_HEIGHT = 100; // px
-
-export default function RainfallChart() {
   return (
     <div className="bg-white rounded-2xl p-5">
       <div className="flex gap-0">
-        {/* Y-axis labels */}
+        {/* Y-axis */}
         <div
-          className="flex flex-col gap-5 pr-3 text-[11px] text-gray-400 text-right shrink-0"
-          style={{ height: `${BAR_MAX_HEIGHT}px`, paddingBottom: "0px" }}
+          className="relative pr-3 text-[11px] text-gray-400 text-right shrink-0"
+          style={{ height: `${BAR_MAX_HEIGHT}px`, width: "36px" }}
         >
-          {["많음", "보통", "적음", " "].map((label) => (
-            <span key={label}>{label}</span>
+          {[
+            {
+              label: type === "rain" ? "많음" : type === "humidity" ? "높음" : "강함",
+              top: "20%",
+            },
+            { label: "보통", top: "48%" },
+            {
+              label: type === "rain" ? "적음" : type === "humidity" ? "낮음" : "약함",
+              top: "77%",
+            },
+          ].map(({ label, top }) => (
+            <span
+              key={label}
+              className="absolute right-3 -translate-y-1/2"
+              style={{ top }}
+            >
+              {label}
+            </span>
           ))}
         </div>
 
-        {/* Chart area */}
+        {/* Chart */}
         <div className="flex-1 flex flex-col relative">
-          {/* grid lines */}
+          {/* Grid */}
           <div className="absolute inset-0 pointer-events-none z-0">
-            {[7, 37, 67].map((top, i) => (
+            {[15, 40, 65].map((top, i) => (
               <div
                 key={i}
                 className="absolute w-full border-t border-gray-200"
@@ -56,35 +93,64 @@ export default function RainfallChart() {
               />
             ))}
           </div>
+
           {/* Bars */}
           <div
             className="flex items-end gap-[6px] border-b border-gray-100 z-10"
             style={{ height: `${BAR_MAX_HEIGHT}px` }}
           >
-            {data.map(({ date, mm }) => {
-              const heightPx = Math.max((mm / 100) * BAR_MAX_HEIGHT, 3);
+            {data.map((item) => {
+              const value =
+                type === "rain"
+                  ? item.rain
+                  : type === "humidity"
+                    ? item.humidity
+                    : item.wind;
+
+              const unit =
+                type === "rain" ? "mm" : type === "humidity" ? "%" : "m/s";
+              const max =
+                type === "rain"
+                  ? 50
+                  : type === "humidity"
+                    ? 100
+                    : 20;
+
+              const heightPx =
+                value > 0 ? Math.max((value / max) * BAR_MAX_HEIGHT, 4) : 0;
+
               return (
                 <div
-                  key={date}
-                  className="flex-1 flex items-end justify-center"
+                  key={item.label}
+                  className="flex-1 flex items-end justify-center group relative"
                 >
-                  <div
-                    className="w-[15px] rounded-t-sm bg-blue-500 transition-all duration-500"
-                    style={{ height: `${heightPx}px` }}
-                  />
+                  {value > 0 && (
+                    <>
+                      <div className="absolute bottom-full mb-1 hidden group-hover:block z-20">
+                        <div className="bg-gray-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap">
+                          {value}
+                          {unit}
+                        </div>
+                      </div>
+                      <div
+                        className={`w-[15px] rounded-t-sm transition-all duration-500 cursor-pointer ${chartColor}`}
+                        style={{ height: `${heightPx}px` }}
+                      />
+                    </>
+                  )}
                 </div>
               );
             })}
           </div>
 
-          {/* X-axis labels */}
+          {/* X-axis */}
           <div className="flex gap-[6px] pt-1">
-            {data.map(({ date }) => (
+            {data.map((item) => (
               <div
-                key={date}
+                key={item.label}
                 className="flex-1 text-center text-[11px] text-gray-400"
               >
-                {date}
+                {item.label}
               </div>
             ))}
           </div>
