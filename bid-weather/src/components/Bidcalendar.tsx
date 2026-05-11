@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { usePredictionCalendar } from "@/hooks/useApi";
+import { usePredictionSse } from "@/hooks/useSse";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export default function BidCalendar({ categoryId, subcategoryId }: Props) {
+  usePredictionSse(categoryId, subcategoryId);
   const { data, isLoading } = usePredictionCalendar(categoryId, subcategoryId);
 
   const predictions = useMemo(() => data?.predictions ?? [], [data]);
@@ -72,15 +74,11 @@ export default function BidCalendar({ categoryId, subcategoryId }: Props) {
     );
   }
 
-  if (availableMonths.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl p-5 min-h-[400px] flex items-center justify-center">
-        <span className="text-gray-400 text-sm">데이터가 없습니다</span>
-      </div>
-    );
-  }
+  const isEmpty = availableMonths.length === 0;
 
-  const current = availableMonths[currentIndex];
+  const current = isEmpty
+    ? `${today.getFullYear()}-${today.getMonth()}`
+    : availableMonths[currentIndex];
 
   const [year, month] = current.split("-").map(Number);
 
@@ -137,11 +135,11 @@ export default function BidCalendar({ categoryId, subcategoryId }: Props) {
   // 6주 여부
   const isSixWeeks = weeks.length === 6;
 
-  const canGoPrev = currentIndex > 0;
-  const canGoNext = currentIndex < availableMonths.length - 1;
+  const canGoPrev = !isEmpty && currentIndex > 0;
+  const canGoNext = !isEmpty && currentIndex < availableMonths.length - 1;
 
   return (
-    <div className="bg-white rounded-2xl p-5 min-h-[400px] flex flex-col">
+    <div className="bg-white rounded-2xl p-5 min-h-[400px] flex flex-col relative">
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
         <button
@@ -265,6 +263,12 @@ export default function BidCalendar({ categoryId, subcategoryId }: Props) {
           </div>
         ))}
       </div>
+
+      {isEmpty && (
+        <div className="absolute inset-0 bg-white/70 rounded-2xl flex items-center justify-center">
+          <span className="text-gray-400 text-sm">예측 대기 중</span>
+        </div>
+      )}
     </div>
   );
 }
