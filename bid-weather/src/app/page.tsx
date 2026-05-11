@@ -36,7 +36,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <SectionTitle>입찰 공고 건 수 추이 및 예측 그래프</SectionTitle>
           <BidGraph />
