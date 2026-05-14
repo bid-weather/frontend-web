@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+import { usePredictionGraph } from "@/hooks/useApi";
 
 interface ApiDataPoint {
   period: string;
@@ -46,57 +47,34 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function BidGraph({ categoryId, subcategoryId }: BidGraphProps) {
-  const [data, setData] = useState<ApiDataPoint[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    data: rawData,
+    isLoading,
+    isError,
+  } = usePredictionGraph(categoryId, subcategoryId);
 
-  useEffect(() => {
-    const fetchGraphData = async () => {
-      try {
-        setIsLoading(true);
-        const queryParams = new URLSearchParams();
-        if (categoryId) queryParams.append("categoryId", categoryId);
-        if (subcategoryId) queryParams.append("subcategoryId", subcategoryId);
+  const data = useMemo<ApiDataPoint[]>(() => {
+    // rawData나 graphData가 없으면 빈 배열 반환
+    if (!rawData || !rawData.graphData) return [];
 
-        const res = await fetch(
-          `/api/v1/predictions/graph?${queryParams.toString()}`,
-        );
-        const result = await res.json();
+    const processedData = [...rawData.graphData];
 
-        if (result.graphData) {
-          const processedData = [...result.graphData];
-
-          // 기존 더미 데이터 로직과 동일한 연결점 처리 적용
-          let lastActualIndex = -1;
-          for (let i = 0; i < processedData.length; i++) {
-            if (processedData[i].actualCount !== null) {
-              lastActualIndex = i;
-            }
-          }
-
-          if (
-            lastActualIndex !== -1 &&
-            lastActualIndex + 1 < processedData.length
-          ) {
-            processedData[lastActualIndex] = {
-              ...processedData[lastActualIndex],
-              predictCount: processedData[lastActualIndex].actualCount,
-            };
-          }
-
-          setData(processedData);
-        } else {
-          setData([]);
-        }
-      } catch (error) {
-        console.error("그래프 데이터 조회 실패:", error);
-        setData([]);
-      } finally {
-        setIsLoading(false);
+    let lastActualIndex = -1;
+    for (let i = 0; i < processedData.length; i++) {
+      if (processedData[i].actualCount !== null) {
+        lastActualIndex = i;
       }
-    };
+    }
 
-    fetchGraphData();
-  }, [categoryId, subcategoryId]);
+    if (lastActualIndex !== -1 && lastActualIndex + 1 < processedData.length) {
+      processedData[lastActualIndex] = {
+        ...processedData[lastActualIndex],
+        predictCount: processedData[lastActualIndex].actualCount,
+      };
+    }
+
+    return processedData;
+  }, [rawData]);
 
   if (isLoading) {
     return (
@@ -106,7 +84,7 @@ export default function BidGraph({ categoryId, subcategoryId }: BidGraphProps) {
     );
   }
 
-  if (data.length === 0) {
+  if (isError || data.length === 0) {
     return (
       <div className="bg-white rounded-2xl p-6 h-[400px] w-full flex items-center justify-center text-gray-400">
         조회된 데이터가 없습니다.
