@@ -1,56 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
-import https from "https";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!;
-
-function proxyFetch(targetUrl: string, method: string, headers: Record<string, string>, body?: string): Promise<{ status: number; contentType: string; data: string }> {
-  return new Promise((resolve, reject) => {
-    const url = new URL(targetUrl);
-    const options: https.RequestOptions = {
-      hostname: url.hostname,
-      port: url.port || 443,
-      path: url.pathname + url.search,
-      method,
-      headers,
-      rejectUnauthorized: false,
-    };
-
-    const req = https.request(options, (res) => {
-      let data = "";
-      res.on("data", (chunk) => { data += chunk; });
-      res.on("end", () => {
-        resolve({
-          status: res.statusCode || 500,
-          contentType: res.headers["content-type"] || "application/json",
-          data,
-        });
-      });
-    });
-
-    req.on("error", reject);
-
-    if (body) req.write(body);
-    req.end();
-  });
-}
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
 
 async function handler(req: NextRequest) {
   const url = new URL(req.url);
   const targetUrl = `${API_BASE}${url.pathname}${url.search}`;
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  try {
+    const headers = new Headers(req.headers);
+    headers.delete("host");
+    headers.set("Content-Type", "application/json");
 
-  let body: string | undefined;
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    body = await req.text();
+    let body: string | undefined;
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      body = await req.text();
+    }
+
+    const response = await fetch(targetUrl, {
+      method: req.method,
+      headers,
+      body,
+      cache: "no-store",
+    });
+
+    const responseData = await response.text();
+
+    return new NextResponse(responseData, {
+      status: response.status,
+      headers: {
+        "Content-Type":
+          response.headers.get("Content-Type") || "application/json",
+      },
+    });
+  } catch (error) {
+    console.error("Proxy Request Failed:", error);
+    return new NextResponse(
+      JSON.stringify({ message: "백엔드 서버와 통신할 수 없습니다." }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
-
-  const response = await proxyFetch(targetUrl, req.method, headers, body);
-
-  return new NextResponse(response.data, {
-    status: response.status,
-    headers: { "Content-Type": response.contentType },
-  });
 }
 
 export const GET = handler;
