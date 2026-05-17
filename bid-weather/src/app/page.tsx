@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import SearchFilter from "@/components/SearchFilter";
 import RainfallChart from "@/components/RainfallChart";
@@ -31,7 +32,6 @@ export default function Home() {
           >
             지난 7일 기상 정보
           </SectionTitle>
-
           <RainfallChart type={weatherType} />
         </div>
       </div>

@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import QueryProvider from "@/providers/QueryProvider";
 
 const pretendard = localFont({
   src: "../../public/fonts/PretendardVariable.woff2",
@@ -29,11 +30,13 @@ export default function RootLayout({
       <body
         className={`${pretendard.className} min-h-screen flex flex-col bg-[#EEF2F7]`}
       >
-        <Header />
-        <main className="flex-1 max-w-[1200px] w-full mx-auto px-6 py-8">
-          {children}
-        </main>
-        <Footer />
+        <QueryProvider>
+          <Header />
+          <main className="flex-1 max-w-[1200px] w-full mx-auto px-6 py-8">
+            {children}
+          </main>
+          <Footer />
+        </QueryProvider>
       </body>
     </html>
   );

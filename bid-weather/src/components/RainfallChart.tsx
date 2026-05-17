@@ -1,51 +1,7 @@
 "use client";
 
 import React from "react";
-
-const data = [
-  {
-    date: 1,
-    rain: 80,
-    humidity: 90,
-    wind: 8,
-  },
-  {
-    date: 2,
-    rain: 20,
-    humidity: 60,
-    wind: 3,
-  },
-  {
-    date: 3,
-    rain: 55,
-    humidity: 72,
-    wind: 5,
-  },
-  {
-    date: 4,
-    rain: 90,
-    humidity: 95,
-    wind: 9,
-  },
-  {
-    date: 5,
-    rain: 35,
-    humidity: 58,
-    wind: 4,
-  },
-  {
-    date: 6,
-    rain: 10,
-    humidity: 40,
-    wind: 2,
-  },
-  {
-    date: 7,
-    rain: 70,
-    humidity: 88,
-    wind: 7,
-  },
-];
+import { useWeather } from "@/hooks/useApi";
 
 const BAR_MAX_HEIGHT = 100;
 
@@ -54,6 +10,8 @@ interface Props {
 }
 
 export default function RainfallChart({ type }: Props) {
+  const { data: weatherData, isLoading } = useWeather();
+
   const chartColor =
     type === "rain"
       ? "bg-blue-500"
@@ -61,16 +19,65 @@ export default function RainfallChart({ type }: Props) {
         ? "bg-cyan-500"
         : "bg-emerald-500";
 
+  const data = React.useMemo(() => {
+    if (!weatherData) return [];
+    const today = new Date();
+    const keys = Object.keys(weatherData).sort((a, b) => {
+      const numA = parseInt(a.replace("ago", ""));
+      const numB = parseInt(b.replace("ago", ""));
+      return numB - numA;
+    });
+    return keys.map((key) => {
+      const daysAgo = parseInt(key.replace("ago", ""));
+      const date = new Date(today);
+      date.setDate(today.getDate() - daysAgo);
+      const day = weatherData[key];
+      return {
+        label: `${date.getMonth() + 1}/${date.getDate()}`,
+        rain: day?.precipitation ?? 0,
+        humidity: day?.humidity ?? 0,
+        wind: day?.dailyMaxWindSpeed ?? 0,
+      };
+    });
+  }, [weatherData]);
+
+  if (isLoading) {
+    return (
+      <div
+        className="bg-white rounded-2xl p-5 flex items-center justify-center"
+        style={{ height: "140px" }}
+      >
+        <span className="text-gray-400 text-sm">불러오는 중...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-2xl p-5">
       <div className="flex gap-0">
         {/* Y-axis */}
         <div
-          className="flex flex-col justify-between pr-3 text-[11px] text-gray-400 text-right shrink-0"
-          style={{ height: `${BAR_MAX_HEIGHT}px` }}
+          className="relative pr-3 text-[11px] text-gray-400 text-right shrink-0"
+          style={{ height: `${BAR_MAX_HEIGHT}px`, width: "36px" }}
         >
-          {["많음", "보통", "적음", ""].map((label) => (
-            <span key={label}>{label}</span>
+          {[
+            {
+              label: type === "rain" ? "많음" : type === "humidity" ? "높음" : "강함",
+              top: "20%",
+            },
+            { label: "보통", top: "48%" },
+            {
+              label: type === "rain" ? "적음" : type === "humidity" ? "낮음" : "약함",
+              top: "77%",
+            },
+          ].map(({ label, top }) => (
+            <span
+              key={label}
+              className="absolute right-3 -translate-y-1/2"
+              style={{ top }}
+            >
+              {label}
+            </span>
           ))}
         </div>
 
@@ -78,7 +85,7 @@ export default function RainfallChart({ type }: Props) {
         <div className="flex-1 flex flex-col relative">
           {/* Grid */}
           <div className="absolute inset-0 pointer-events-none z-0">
-            {[25, 50, 75].map((top, i) => (
+            {[15, 40, 65].map((top, i) => (
               <div
                 key={i}
                 className="absolute w-full border-t border-gray-200"
@@ -100,19 +107,37 @@ export default function RainfallChart({ type }: Props) {
                     ? item.humidity
                     : item.wind;
 
-              const max = type === "wind" ? 10 : 100;
+              const unit =
+                type === "rain" ? "mm" : type === "humidity" ? "%" : "m/s";
+              const max =
+                type === "rain"
+                  ? 50
+                  : type === "humidity"
+                    ? 100
+                    : 20;
 
-              const heightPx = Math.max((value / max) * BAR_MAX_HEIGHT, 3);
+              const heightPx =
+                value > 0 ? Math.max((value / max) * BAR_MAX_HEIGHT, 4) : 0;
 
               return (
                 <div
-                  key={item.date}
-                  className="flex-1 flex items-end justify-center"
+                  key={item.label}
+                  className="flex-1 flex items-end justify-center group relative"
                 >
-                  <div
-                    className={`w-[15px] rounded-t-sm transition-all duration-500 ${chartColor}`}
-                    style={{ height: `${heightPx}px` }}
-                  />
+                  {value > 0 && (
+                    <>
+                      <div className="absolute bottom-full mb-1 hidden group-hover:block z-20">
+                        <div className="bg-gray-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap">
+                          {value}
+                          {unit}
+                        </div>
+                      </div>
+                      <div
+                        className={`w-[15px] rounded-t-sm transition-all duration-500 cursor-pointer ${chartColor}`}
+                        style={{ height: `${heightPx}px` }}
+                      />
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -122,10 +147,10 @@ export default function RainfallChart({ type }: Props) {
           <div className="flex gap-[6px] pt-1">
             {data.map((item) => (
               <div
-                key={item.date}
+                key={item.label}
                 className="flex-1 text-center text-[11px] text-gray-400"
               >
-                {item.date}
+                {item.label}
               </div>
             ))}
           </div>

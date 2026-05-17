@@ -13,7 +13,7 @@ export default function SectionTitle({
   action,
 }: SectionTitleProps) {
   return (
-    <div className={`flex items-center justify-between mb-4 ${className}`}>
+    <div className={`flex items-center justify-between mb-2 ${className}`}>
       <h2 className="text-[16px] font-bold text-gray-800 tracking-tight">
         {children}
       </h2>

@@ -1,43 +1,9 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { usePredictionCalendar } from "@/hooks/useApi";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-
-// 예시 데이터
-const predictions = [
-  { date: "2026-05-04", count: 12 },
-  { date: "2026-05-05", count: 45 },
-  { date: "2026-05-06", count: 8 },
-  { date: "2026-05-07", count: 23 },
-  { date: "2026-05-08", count: 31 },
-  { date: "2026-05-09", count: 5 },
-  { date: "2026-05-10", count: 18 },
-  { date: "2026-05-11", count: 27 },
-  { date: "2026-05-12", count: 39 },
-  { date: "2026-05-13", count: 41 },
-  { date: "2026-05-14", count: 16 },
-  { date: "2026-05-15", count: 9 },
-  { date: "2026-05-16", count: 14 },
-  { date: "2026-05-17", count: 29 },
-  { date: "2026-05-18", count: 33 },
-  { date: "2026-05-19", count: 21 },
-  { date: "2026-05-20", count: 11 },
-  { date: "2026-05-21", count: 25 },
-  { date: "2026-05-22", count: 37 },
-  { date: "2026-05-23", count: 42 },
-  { date: "2026-05-24", count: 19 },
-  { date: "2026-05-25", count: 7 },
-  { date: "2026-05-26", count: 15 },
-  { date: "2026-05-27", count: 28 },
-  { date: "2026-05-28", count: 36 },
-  { date: "2026-05-29", count: 44 },
-  { date: "2026-05-30", count: 20 },
-  { date: "2026-05-31", count: 13 },
-  { date: "2026-06-01", count: 24 },
-  { date: "2026-06-02", count: 32 },
-  { date: "2026-06-03", count: 40 },
-];
 
 function getIntensity(count: number | undefined): 0 | 1 | 2 | 3 {
   if (!count) return 0;
@@ -68,15 +34,22 @@ function toKey(year: number, month: number, day: number) {
   )}`;
 }
 
-export default function BidCalendar() {
+interface Props {
+  categoryId?: string;
+  subcategoryId?: string;
+}
+
+export default function BidCalendar({ categoryId, subcategoryId }: Props) {
+  const { data, isLoading } = usePredictionCalendar(categoryId, subcategoryId);
+
+  const predictions = useMemo(() => data?.predictions ?? [], [data]);
+
   const today = new Date();
 
-  // 빠른 조회용
   const bidCounts = Object.fromEntries(
     predictions.map((item) => [item.date, item.count]),
   );
 
-  // 존재하는 month 추출
   const availableMonths = useMemo(() => {
     return Array.from(
       new Set(
@@ -87,9 +60,25 @@ export default function BidCalendar() {
         }),
       ),
     );
-  }, []);
+  }, [predictions]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-2xl p-5 min-h-[400px] flex items-center justify-center">
+        <span className="text-gray-400 text-sm">불러오는 중...</span>
+      </div>
+    );
+  }
+
+  if (availableMonths.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-5 min-h-[400px] flex items-center justify-center">
+        <span className="text-gray-400 text-sm">데이터가 없습니다</span>
+      </div>
+    );
+  }
 
   const current = availableMonths[currentIndex];
 
