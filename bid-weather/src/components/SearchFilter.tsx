@@ -1,33 +1,125 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import IcoReset from "@/assets/icons/Filter/ico_reset.svg";
 import IcoDelete from "@/assets/icons/Filter/ico_delete_fill.svg";
 import IcoAngle from "@/assets/icons/Filter/ico_angle.svg";
 
-export default function SearchFilter() {
-  // 선택된 필터 상태 관리 (예시 데이터)
-  const [activeFilters, setActiveFilters] = useState([
-    { id: 2, label: "공사" },
-    { id: 3, label: "수해/침수 예방" },
-  ]);
+interface SearchFilterProps {
+  selectedCategory: string;
+  setSelectedCategory: (val: string) => void;
+  selectedSubCategory: string;
+  setSelectedSubCategory: (val: string) => void;
+}
 
-  // 필터 삭제 핸들러
-  const handleRemoveFilter = (id: number) => {
-    setActiveFilters((prev) => prev.filter((filter) => filter.id !== id));
+interface CategoryItem {
+  id: string;
+  name: string;
+}
+
+export default function SearchFilter({
+  selectedCategory,
+  setSelectedCategory,
+  selectedSubCategory,
+  setSelectedSubCategory,
+}: SearchFilterProps) {
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [subcategories, setSubcategories] = useState<CategoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 1. 대분류 목록 조회
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/v1/categories");
+        if (!res.ok) throw new Error("대분류 조회 서버 에러");
+        const data = await res.json();
+
+        const mappedCategories = (data.categories || []).map((cat: any) => ({
+          id: String(cat.id),
+          name: cat.categoryName,
+        }));
+
+        setCategories(mappedCategories);
+      } catch (error) {
+        console.error("대분류 조회 실패", error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // 2. 소분류 목록 조회 (대분류 변경 시)
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      if (!selectedCategory) {
+        setSubcategories([]);
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const res = await fetch(
+          `/api/v1/categories/${selectedCategory}/subcategories`,
+        );
+        if (!res.ok) throw new Error("소분류 조회 서버 에러");
+        const data = await res.json();
+
+        const mappedSub = (data.subcategories || []).map((sub: any) => ({
+          id: String(sub.id || sub.subcategoryId || sub),
+          name: sub.subcategoryName || sub.name || sub,
+        }));
+
+        setSubcategories(mappedSub);
+      } catch (error) {
+        console.error("소분류 조회 실패", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSubcategories();
+  }, [selectedCategory]);
+
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCategory(e.target.value);
+    setSelectedSubCategory(""); // 대분류가 바뀌면 소분류 초기화
   };
 
-  // 필터 초기화 핸들러
+  const handleSubCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedSubCategory(e.target.value);
+  };
+
+  // 선택된 필터 칩(태그) 동적 생성
+  const activeFilters = [];
+  if (selectedCategory) {
+    const catName =
+      categories.find((c) => c.id === selectedCategory)?.name || "";
+    activeFilters.push({ id: "category", label: catName });
+  }
+  if (selectedSubCategory) {
+    const subName =
+      subcategories.find((c) => c.id === selectedSubCategory)?.name || "";
+    activeFilters.push({ id: "subcategory", label: subName });
+  }
+
+  const handleRemoveFilter = (id: string) => {
+    if (id === "category") {
+      setSelectedCategory("");
+      setSelectedSubCategory("");
+    } else if (id === "subcategory") {
+      setSelectedSubCategory("");
+    }
+  };
+
   const handleResetFilters = () => {
-    setActiveFilters([]);
+    setSelectedCategory("");
+    setSelectedSubCategory("");
   };
 
   return (
     <div className="w-full">
-      {/* 검색 입력폼 (Search Top Box) */}
       <div className="bg-white rounded-2xl p-6 md:px-8 md:py-5">
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-4/5">
+            {/* 업종 분류 (대분류) */}
             <div className="flex items-center gap-3 w-full">
               <label
                 className="text-[15px] font-bold text-gray-900 shrink-0 w-16"
@@ -38,16 +130,22 @@ export default function SearchFilter() {
               <div className="relative flex-1">
                 <select
                   id="appl-sch-sel2"
+                  value={selectedCategory}
+                  onChange={handleCategoryChange}
                   className="appearance-none w-full h-12 px-4 pr-10 border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
                 >
                   <option value="">전체</option>
-                  <option value="construction">공사</option>
-                  <option value="goods">물품</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
                 </select>
                 <IcoAngle className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-500 pointer-events-none" />
               </div>
             </div>
 
+            {/* 세부 업종 (소분류) */}
             <div className="flex items-center gap-3 w-full">
               <label
                 className="text-[15px] font-bold text-gray-900 shrink-0 w-16"
@@ -58,11 +156,17 @@ export default function SearchFilter() {
               <div className="relative flex-1">
                 <select
                   id="appl-sch-sel3"
-                  className="appearance-none w-full h-12 px-4 pr-10 border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                  value={selectedSubCategory}
+                  onChange={handleSubCategoryChange}
+                  disabled={!selectedCategory || isLoading}
+                  className="appearance-none w-full h-12 px-4 pr-10 border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 disabled:bg-gray-100 disabled:text-gray-400"
                 >
-                  <option value="">전체</option>
-                  <option value="flood-prevention">수해/침수 예방</option>
-                  <option value="disaster-recovery">재해 긴급 복구</option>
+                  <option value="">{isLoading ? "로딩 중..." : "전체"}</option>
+                  {subcategories.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </option>
+                  ))}
                 </select>
                 <IcoAngle className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-500 pointer-events-none" />
               </div>
@@ -77,17 +181,14 @@ export default function SearchFilter() {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {/* 새로고침(초기화) 버튼 */}
               <button
                 type="button"
                 onClick={handleResetFilters}
                 className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-full hover:bg-gray-100 transition-colors shrink-0"
-                aria-label="새로고침"
               >
                 <IcoReset className="w-6 h-6 text-gray-600 scale-60" />
               </button>
 
-              {/* 태그 리스트 */}
               <div className="flex flex-wrap items-center gap-2">
                 {activeFilters.map((filter) => (
                   <span
@@ -99,7 +200,6 @@ export default function SearchFilter() {
                       type="button"
                       onClick={() => handleRemoveFilter(filter.id)}
                       className="relative flex items-center justify-center w-5 h-5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors shrink-0"
-                      aria-label="삭제"
                     >
                       <IcoDelete className="absolute w-5 h-5 fill-current scale-75" />
                     </button>

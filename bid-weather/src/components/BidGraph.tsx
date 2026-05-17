@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+import { usePredictionGraph } from "@/hooks/useApi";
 
 interface ApiDataPoint {
   period: string;
@@ -18,44 +19,10 @@ interface ApiDataPoint {
   predictCount: number | null;
 }
 
-const generateDummyData = (): ApiDataPoint[] => {
-  const data: ApiDataPoint[] = [];
-  let currentVal = 20;
-  let year = 2025;
-  let month = 4;
-
-  // 실제 데이터 구간
-  for (let i = 0; i < 12; i++) {
-    currentVal = Math.max(5, currentVal + Math.floor(Math.random() * 20 - 10));
-    const period = `${year}-${String(month).padStart(2, "0")}`;
-    data.push({ period, actualCount: currentVal, predictCount: null });
-    month++;
-    if (month > 12) {
-      month = 1;
-      year++;
-    }
-  }
-
-  // 연결점 처리
-  const lastActualIndex = data.length - 1;
-  const lastActualValue = data[lastActualIndex].actualCount as number;
-  data[lastActualIndex].predictCount = lastActualValue;
-
-  // 예측 데이터 구간
-  let predictVal = lastActualValue;
-  for (let i = 0; i < 1; i++) {
-    predictVal = Math.max(5, predictVal + Math.floor(Math.random() * 20 - 8));
-    const period = `${year}-${String(month).padStart(2, "0")}`;
-    data.push({ period, actualCount: null, predictCount: predictVal });
-    month++;
-    if (month > 12) {
-      month = 1;
-      year++;
-    }
-  }
-
-  return data;
-};
+interface BidGraphProps {
+  categoryId: string;
+  subcategoryId: string;
+}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -79,17 +46,48 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function BidGraph() {
-  const [data, setData] = useState<ApiDataPoint[]>([]);
+export default function BidGraph({ categoryId, subcategoryId }: BidGraphProps) {
+  const {
+    data: rawData,
+    isLoading,
+    isError,
+  } = usePredictionGraph(categoryId, subcategoryId);
 
-  useEffect(() => {
-    setData(generateDummyData());
-  }, []);
+  const data = useMemo<ApiDataPoint[]>(() => {
+    // rawData나 graphData가 없으면 빈 배열 반환
+    if (!rawData || !rawData.graphData) return [];
 
-  if (data.length === 0) {
+    const processedData = [...rawData.graphData];
+
+    let lastActualIndex = -1;
+    for (let i = 0; i < processedData.length; i++) {
+      if (processedData[i].actualCount !== null) {
+        lastActualIndex = i;
+      }
+    }
+
+    if (lastActualIndex !== -1 && lastActualIndex + 1 < processedData.length) {
+      processedData[lastActualIndex] = {
+        ...processedData[lastActualIndex],
+        predictCount: processedData[lastActualIndex].actualCount,
+      };
+    }
+
+    return processedData;
+  }, [rawData]);
+
+  if (isLoading) {
     return (
       <div className="bg-white rounded-2xl p-6 h-[400px] w-full flex items-center justify-center text-gray-400">
         데이터를 불러오는 중입니다...
+      </div>
+    );
+  }
+
+  if (isError || data.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-6 h-[400px] w-full flex items-center justify-center text-gray-400">
+        조회된 데이터가 없습니다.
       </div>
     );
   }

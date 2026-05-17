@@ -12,10 +12,18 @@ import WeatherToggle from "@/components/WeatherToggle";
 export default function Home() {
   const [weatherType, setWeatherType] = useState("rain");
 
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string>("");
+
   return (
     <>
       <div className="mb-6">
-        <SearchFilter />
+        <SearchFilter
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+          selectedSubCategory={selectedSubCategory}
+          setSelectedSubCategory={setSelectedSubCategory}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-20">
@@ -39,11 +47,15 @@ export default function Home() {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <SectionTitle>입찰 공고 건 수 추이 및 예측 그래프</SectionTitle>
-          <BidGraph />
+          <BidGraph
+            categoryId={selectedCategory}
+            subcategoryId={selectedSubCategory}
+          />
         </div>
 
         <div>
           <SectionTitle>입찰 공고 건 수 예측 달력</SectionTitle>
+          {/* BidCalendar에도 필터 상태를 전달해 줍니다 */}
           <BidCalendar />
         </div>
       </div>

@@ -1,95 +1,59 @@
 "use client";
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import WeatherCard from "./WeatherCard";
 
-interface RawWeatherData {
-  maxTemp: string;
-  minTemp: string;
-  rain: string;
-  humidity: string;
-  dayMaxWindSpeed: string;
+// 상태로 관리할 가공된 날씨 데이터 타입
+interface MappedWeather {
+  date: string;
   condition: string;
+  max: number;
+  min: number;
 }
 
 export default function WeeklyWeather() {
-  // 더미 데이터
-  const serverData: Record<string, RawWeatherData> = {
-    "1ago": {
-      maxTemp: "24",
-      minTemp: "11",
-      rain: "0",
-      humidity: "45",
-      dayMaxWindSpeed: "2",
-      condition: "맑음",
-    },
-    "2ago": {
-      maxTemp: "18",
-      minTemp: "5",
-      rain: "0",
-      humidity: "50",
-      dayMaxWindSpeed: "15",
-      condition: "강풍",
-    },
-    "3ago": {
-      maxTemp: "20",
-      minTemp: "8",
-      rain: "100",
-      humidity: "95",
-      dayMaxWindSpeed: "12",
-      condition: "비",
-    },
-    "4ago": {
-      maxTemp: "22",
-      minTemp: "10",
-      rain: "0",
-      humidity: "85",
-      dayMaxWindSpeed: "5",
-      condition: "흐림",
-    },
-    "5ago": {
-      maxTemp: "25",
-      minTemp: "12",
-      rain: "0",
-      humidity: "40",
-      dayMaxWindSpeed: "3",
-      condition: "구름 조금",
-    },
-    "6ago": {
-      maxTemp: "28",
-      minTemp: "14",
-      rain: "0",
-      humidity: "70",
-      dayMaxWindSpeed: "4",
-      condition: "맑음",
-    },
-    "7ago": {
-      maxTemp: "30",
-      minTemp: "15",
-      rain: "80",
-      humidity: "90",
-      dayMaxWindSpeed: "8",
-      condition: "비",
-    },
-  };
+  const [weeklyWeather, setWeeklyWeather] = useState<MappedWeather[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const today = new Date();
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        const res = await fetch("/api/v1/weather");
+        const data = await res.json();
 
-  // 날짜 계산 및 데이터 맵핑
-  const weeklyWeather = [7, 6, 5, 4, 3, 2, 1].map((num) => {
-    const key = `${num}ago`;
-    const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() - num);
+        const today = new Date();
+        const mappedData: MappedWeather[] = [7, 6, 5, 4, 3, 2, 1].map((num) => {
+          const key = `${num}ago`;
+          const rawData = data[key];
 
-    const dayData = serverData[key];
+          // API 응답이 배열일 경우를 대비한 안전한 접근
+          const dayData = Array.isArray(rawData) ? rawData[0] : rawData;
 
-    return {
-      date: targetDate.getDate().toString(),
-      condition: dayData?.condition || "맑음",
-      max: parseInt(dayData?.maxTemp || "0"),
-      min: parseInt(dayData?.minTemp || "0"),
+          const targetDate = new Date(today);
+          targetDate.setDate(today.getDate() - num);
+
+          return {
+            date: targetDate.getDate().toString(),
+            condition: dayData?.weatherType || "맑음",
+            max: parseInt(dayData?.maxTemp || "0", 10),
+            min: parseInt(dayData?.minTemp || "0", 10),
+          };
+        });
+
+        setWeeklyWeather(mappedData);
+      } catch (error) {
+        console.error("날씨 정보 조회 실패:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
-  });
+
+    fetchWeather();
+  }, []);
+
+  if (isLoading)
+    return (
+      <div className="mt-4 text-gray-500">날씨 정보를 불러오는 중입니다...</div>
+    );
 
   return (
     <div className="grid grid-cols-4 md:grid-cols-7 gap-3 mt-4">

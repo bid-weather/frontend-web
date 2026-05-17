@@ -3,20 +3,11 @@
 import React from "react";
 import Sunny from "@/assets/icons/Weather/Sunny.svg";
 import Cloudy from "@/assets/icons/Weather/Cloudy.svg";
-import PartlyCloudy from "@/assets/icons/Weather/Partly-cloudy.svg";
 import Rain from "@/assets/icons/Weather/Rain.svg";
 import Snow from "@/assets/icons/Weather/Snow.svg";
-import RainThunder from "@/assets/icons/Weather/Rain&Thunderstorm.svg";
 import Wind from "@/assets/icons/Weather/Wind.svg";
 
-export type WeatherType =
-  | "Sunny"
-  | "Cloudy"
-  | "PartlyCloudy"
-  | "Rain"
-  | "Snow"
-  | "RainThunder"
-  | "Wind";
+export type WeatherType = "Sunny" | "Cloudy" | "Rain" | "Snow" | "Wind";
 
 const WeatherIconMap: Record<
   WeatherType,
@@ -24,10 +15,8 @@ const WeatherIconMap: Record<
 > = {
   Sunny: Sunny,
   Cloudy: Cloudy,
-  PartlyCloudy: PartlyCloudy,
   Rain: Rain,
   Snow: Snow,
-  RainThunder: RainThunder,
   Wind: Wind,
 };
 
@@ -40,14 +29,15 @@ interface WeatherCardProps {
 
 // condition을 아이콘 타입으로
 const getIconTypeFromCondition = (condition: string): WeatherType => {
-  if (condition.includes("맑음")) return "Sunny";
-  if (condition.includes("구름")) return "PartlyCloudy";
-  if (condition.includes("흐림")) return "Cloudy";
-  if (condition.includes("비")) return "Rain";
-  if (condition.includes("눈")) return "Snow";
-  if (condition.includes("천둥") || condition.includes("번개"))
-    return "RainThunder";
-  if (condition.includes("바람") || condition.includes("강풍")) return "Wind";
+  if (!condition) return "Sunny"; // 값이 없을 경우 예외 처리
+
+  const upperCond = condition.toUpperCase();
+
+  if (upperCond.includes("SUNNY")) return "Sunny";
+  if (upperCond.includes("CLOUDY")) return "Cloudy";
+  if (upperCond.includes("RAIN")) return "Rain";
+  if (upperCond.includes("SNOW")) return "Snow";
+  if (upperCond.includes("WINDY")) return "Wind";
 
   return "Sunny"; // 기본값
 };
